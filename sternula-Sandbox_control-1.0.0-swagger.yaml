@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: Sternula Sandbox Control Interface 
+  version: 1.0.0
+  description: >-
+    Interface to be used by Sternula VDES/MMS Sandbox users to set and query settings of their respective sandbox, authenticated by http basic authentication. 
+    Copyright Sternula Aps, Denmark, 2019, 2020
+    May be used to work with the <a href="https://www.sternula.com/index.php/product-vdes-testplatform/">Sternula Sandbox Product</a>.
+  termsOfService: 'https://www.sternula.com/index.php/general-terms-and-conditions/'
+  contact:
+    name: Sternula
+    url: 'https://www.sternula.com'
+paths:
+  /vdes_:
+    put:
+      tags:
+        - parameters
+      summary: Change the parameters of the VDE-SAT network
+      description: 'Change the year or the number of satellites to be used in the VDE-SAT network model. One of both must be changed, if both are given, number of satellites will overrule year.'
+      parameters:
+        - name: year
+          in: header
+          required: false
+          description: determine the number and orbits of satellites by the givgen year, using the current sternula roadmap. This setting is used in the following VDE-SAT network simulations until changed. Shall not be specified if number_of_satellites is specified.
+          schema:
+            type: integer
+            enum: [2023, 2024, 2025, 2026, 2027, 2028, 2029] 
+          example: 2023
+        - name: number_of_satellites
+          in: header
+          required: false
+          description: number of satellites used in the following VDE-SAT network simulations until changed. Shall not be specified if year is specified.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 140
+          example: 4
+        - name: interference_conditions
+          in: header
+          required: false
+          description: gives the possibility to assume good or bad conditions for the transmissions.
+          schema:
+            type: string
+            enum: [bad, normal, good]
+            default: normal
+      responses:
+        '200':
+          description: Successful response. Message accepted by the system.
+          content:
+            application/json:
+              schema:
+                type: string
+                
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          
+  /time_reference:
+    put:
+      tags:
+        - parameters
+      summary: Change the simulation time vs. real time
+      description: 'Set a high factor to increase simulation speed by that factor compared to realtime.'
+      parameters:
+        - name: time_factor
+          in: header
+          required: true
+          description: the factor applied to the time clock in the simulation. If e.g. set to 10, a 60 minute interval in the simulated network will only take 6 minutes in realtime. Default is a factor of 1.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+          example: 60
+      responses:
+        '200':
+          description: Successful response.
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /ship:
+    put:
+      tags:
+        - parameters
+      summary: Change the parameters of a ship
+      description: 'Change the parameters of the ships used in the VDE-SAT network model.'
+      parameters:
+        - name: ship_mmsi
+          in: header
+          required: true
+          description: >-
+            MMSI of the ship you want to change
+          schema: 
+            $ref: '#/components/schemas/Mmsi'
+        - name: latitude 
+          in: header
+          required: false
+          description: >-
+            If provided, sets the latitude of the ship. Positive values are north, negative are south. The more arctic the latitude, the more often the ship will have VDE-SAT connectivity in the early stages of the Sternula network.
+          schema:
+            type: number
+            format: degrees
+            minimum: -90.0
+            maximum: +90.0
+          example: -49.55678   
+      responses:
+        '200':
+          description: Successful response.
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - ship
+      summary: Delete ship
+      description: 'Delete a ship from the simulation. It will not be possible to receive messages for that ship anymore. The VDE-SAT network will forget that this ship existed. Messages cannot be transferred to this ship anymore.'
+      parameters:
+        - name: ship_mmsi
+          in: header
+          required: true
+          description: >-
+            MMSI of the ship you want to delete
+          schema: 
+            $ref: '#/components/schemas/Mmsi'
+      responses:
+        '200':
+          description: Successful response
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'  
+    get:
+      tags:
+        - ship
+      summary: get a list of ships
+      description: 'Get the list of ships in the simulation.'
+      responses:
+        '200':
+          description: Successful response. The deliveryTime parameter of the response indicates the latest point in time where the message shall be delivered to the Gateway. The vdesatTxTime parameter indicates when the message is sent to the ship on the VDE-SAT link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOfShips'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    Error:
+      type: object
+      description: To be returned on error. Includes error code and optionally a description of the error.
+      properties:
+        errorCause:
+          type: string
+          enum: [unspecified, 
+                 position_of_destination_unknown,
+                 message_too_long,
+                 authentication_failure,
+                 unknown_destination,
+                 too_late_to_cancel]
+        errorMessage:
+          type: string
+      required:
+        - errorCause
+    ListOfShips:
+      type: array
+      items:
+        $ref: '#/components/schemas/Mmsi'
+    Mmsi:
+      type: string
+      minLength: 9
+      maxLength: 9
+      format: mmsi
+      pattern: '^\d{9}$'
+      example: '123456789'
+
+security:
+  - BasicAuth: []
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/sternula/MMS_GW/1.0.1
