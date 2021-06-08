@@ -1,0 +1,329 @@
+openapi: 3.0.3
+info:
+  title: Sternula Sandbox Control Interface 
+  version: 1.0.1
+  description: >-
+    Interface to be used by Sternula VDES/MMS Sandbox users to set and query settings of their respective sandbox, authenticated by http basic authentication. 
+    Copyright Sternula Aps, Denmark, 2019, 2020
+    May be used to work with the <a href="https://www.sternula.com/index.php/product-vdes-testplatform/">Sternula Sandbox Product</a>.
+  termsOfService: 'https://www.sternula.com/index.php/general-terms-and-conditions/'
+  contact:
+    name: Sternula
+    url: 'https://www.sternula.com'
+#===paths===
+paths:
+  /vdes_:
+    put:
+      tags:
+        - parameters
+      summary: Change the parameters of the VDE-SAT network
+      description: 'Change the year or the number of satellites to be used in the VDE-SAT network model. One of both must be changed, if both are given, number of satellites will overrule year.'
+      parameters:
+        - name: year
+          in: header
+          required: false
+          description: determine the number and orbits of satellites by the givgen year, using the current sternula roadmap. This setting is used in the following VDE-SAT network simulations until changed. Shall not be specified if number_of_satellites is specified.
+          schema:
+            type: integer
+            enum: [2023, 2024, 2025, 2026, 2027, 2028, 2029] 
+          example: 2023
+        - name: number_of_satellites
+          in: header
+          required: false
+          description: number of satellites used in the following VDE-SAT network simulations until changed. Shall not be specified if year is specified.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 140
+          example: 4
+        - name: interference_conditions
+          in: header
+          required: false
+          description: gives the possibility to assume good or bad conditions for the transmissions.
+          schema:
+            type: string
+            enum: [bad, normal, good]
+            default: normal
+      responses:
+        '200':
+          description: Successful response. Message accepted by the system.
+          content:
+            application/json:
+              schema:
+                type: string
+                
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          
+  /time_reference:
+    put:
+      tags:
+        - parameters
+      summary: Change the simulation time vs. real time
+      description: 'Set a high factor to increase simulation speed by that factor compared to realtime.'
+      parameters:
+        - name: time_factor
+          in: header
+          required: true
+          description: the factor applied to the time clock in the simulation. If e.g. set to 10, a 60 minute interval in the simulated network will only take 6 minutes in realtime. Default is a factor of 1.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+          example: 60
+      responses:
+        '200':
+          description: Successful response.
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  #---Ships---
+  /ships:
+    get:
+      summary: get a list of ships
+      description: 'Get the list of ships in the simulation.'
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOfShips'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+    post:
+      tags:
+        - ship
+      summary: Add a new ship
+      description: 'Add a new ship to the VDE-SAT network model'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ship'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/Mmsi'
+          links:
+            GetShipByMmsi:
+              operationId: getShip
+              parameters:
+                MMSI: '$response.body#/Mmsi'
+              description: Link to the created ship.
+        '422':
+          description: Unprocessable Entity
+          
+  /ships/{MMSI}:
+    parameters:
+      - in: path
+        name: MMSI
+        schema:
+           $ref: '#/components/schemas/Mmsi'
+        required: true
+        description: MMSI of the ship
+    # delete
+    delete:
+      summary: Delete a ship from the simulation. It will not be possible to receive messages for that ship anymore. The VDE-SAT network will forget that this ship existed. Messages cannot be transferred to this ship anymore.
+      responses:
+        '204':
+          description: Ship was deleted.    
+    # get
+    get:
+      summary: Get a ship by MMSI
+      operationId: getShip
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ship'
+        '404':
+          description: not found 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/NotFound'
+  #---coaststations---
+  /coaststations:
+    get:
+      summary: get a list of coast stations
+      description: 'Get the list of coast stations in the simulation.'
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListOfCoastStations'
+  
+    post:
+      tags:
+        - coaststation
+      summary: Add a new coast station
+      description: 'Add a new coast station to the VDE-SAT network model'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoastStation'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/Mmsi'
+          links:
+            GetShipByMmsi:
+              operationId: getShip
+              parameters:
+                MMSI: '$response.body#/Mmsi'
+              description: Link to the created coast station.
+        '422':
+          description: Unprocessable Entity
+          
+  /coaststations/{MMSI}:
+    parameters:
+      - in: path
+        name: MMSI
+        schema:
+           $ref: '#/components/schemas/Mmsi'
+        required: true
+        description: MMSI of the coast station
+    # delete
+    delete:
+      summary: Delete a coast station from the simulation. The VDE-SAT network will forget that this coast station existed. Messages cannot be transferred through this coast station anymore.
+      responses:
+        '204':
+          description: Coast station was deleted.    
+    # get
+    get:
+      summary: Get a coast station by MMSI
+      operationId: getCoastStation
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoastStation'
+        '404':
+          description: not found 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/NotFound'
+          
+#===components===
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    Error:
+      type: object
+      description: To be returned on error. Includes error code and optionally a description of the error.
+      properties:
+        errorCause:
+          type: string
+          enum: [unspecified, 
+                 position_of_destination_unknown,
+                 message_too_long,
+                 authentication_failure,
+                 unknown_destination,
+                 too_late_to_cancel]
+        errorMessage:
+          type: string
+      required:
+        - errorCause
+    ListOfShips:
+      type: array
+      items:
+        $ref: '#/components/schemas/Mmsi'
+    ListOfCoastStations:
+      type: array
+      items:
+        $ref: '#/components/schemas/Mmsi'
+    Mmsi:
+      description: Maritime Mobile Service Identity
+      type: string
+      minLength: 9
+      maxLength: 9
+      format: mmsi
+      pattern: '^\d{9}$'
+      example: '220243167'
+    Ship:
+      type: object
+      required:
+        - Mmsi
+        - longitude
+        - latitude
+      properties:
+        Mmsi:
+          $ref: '#/components/schemas/Mmsi'
+        latitude:
+            type: number
+            format: degrees
+            minimum: -90.0
+            maximum: +90.0
+            example: 57.046707      
+        longitude:
+            type: number
+            format: degrees
+            minimum: -360.0
+            maximum: +360.0
+            example: 9.935932      
+    CoastStation:
+      type: object
+      required:
+        - Mmsi
+        - longitude
+        - latitude
+      properties:
+        Mmsi:
+          $ref: '#/components/schemas/Mmsi'
+        latitude:
+            type: number
+            format: degrees
+            minimum: -90.0
+            maximum: +90.0
+            example: 57.046707      
+        longitude:
+            type: number
+            format: degrees
+            minimum: -360.0
+            maximum: +360.0
+            example: 9.935932      
+  #---responses---
+  responses:
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+security:
+  - BasicAuth: []
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/overgaard/sternula-sandbox_control_interface/1.0.1
