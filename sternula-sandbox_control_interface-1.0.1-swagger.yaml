@@ -29,32 +29,29 @@ paths:
         '201':
           description: Created
         '422':
-          description: Unprocessable Entity    
-  /time_reference:
-    put:
-      tags:
-        - parameters
-      summary: Change the simulation time vs. real time
-      description: 'Set a high factor to increase simulation speed by that factor compared to realtime.'
-      parameters:
-        - name: time_factor
-          in: header
-          required: true
-          description: the factor applied to the time clock in the simulation. If e.g. set to 10, a 60 minute interval in the simulated network will only take 6 minutes in realtime. Default is a factor of 1.
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 10000
-          example: 60
+          description: Unprocessable Entity
+  /start:
+    post:
+      tags: 
+        - config
+      summary: Start VDE-SAT network
+      description: Start the VDE-SAT network acording to last uploaded configuration.
       responses:
         '200':
-          description: Successful response.
-        default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Started
+        '400':
+          description: Unable to start
+  /shutdown:
+    post:
+      tags: 
+        - config
+      summary: Shutdown the VDE-SAT network
+      description: Shutdown the VDE-SAT network.
+      responses:
+        '200':
+          description: Shutdown
+        '400':
+          description: Unable to shutdown
   #---Ships---
   /ships:
     get:
@@ -116,6 +113,8 @@ paths:
       responses:
         '204':
           description: Ship was deleted.    
+        '404':
+          description: not found
     # get
     get:
       tags:
@@ -262,10 +261,9 @@ components:
           type: string
           format: date-time
         interference_conditions:
-          description: gives the possibility to assume good or bad conditions for the transmissions.
-          type: string
-          enum: [bad, normal, good]
-          default: normal       
+          $ref: '#/components/schemas/Interference_conditions'
+        time_factor:
+          $ref: '#/components/schemas/Time_factor'
     Constellation_number_of_satellites:
       type: object
       properties:
@@ -276,10 +274,20 @@ components:
           maximum: 140
           example: 4
         interference_conditions:
-          description: gives the possibility to assume good or bad conditions for the transmissions.
-          type: string
-          enum: [bad, normal, good]
-          default: normal       
+          $ref: '#/components/schemas/Interference_conditions'
+        time_factor:
+          $ref: '#/components/schemas/Time_factor'
+    Interference_conditions:
+      description: gives the possibility to assume good or bad conditions for the transmissions.
+      type: string
+      enum: [bad, normal, good]
+      default: normal
+    Time_factor:
+      description: the factor applied to the time clock in the simulation. If e.g. set to 10, a 60 minute interval in the simulated network will only take 6 minutes in realtime. Default is a factor of 1.
+      type: integer
+      minimum: 1
+      maximum: 10000
+      example: 10
     #---ship---  
     ListOfShips:
       type: array
