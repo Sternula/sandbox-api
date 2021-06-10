@@ -13,52 +13,23 @@ info:
 #===paths===
 paths:
   /vdes_:
-    put:
+    post:
       tags:
-        - parameters
-      summary: Change the parameters of the VDE-SAT network
-      description: 'Change the year or the number of satellites to be used in the VDE-SAT network model. One of both must be changed, if both are given, number of satellites will overrule year.'
-      parameters:
-        - name: year
-          in: header
-          required: false
-          description: determine the number and orbits of satellites by the givgen year, using the current sternula roadmap. This setting is used in the following VDE-SAT network simulations until changed. Shall not be specified if number_of_satellites is specified.
-          schema:
-            type: integer
-            enum: [2023, 2024, 2025, 2026, 2027, 2028, 2029] 
-          example: 2023
-        - name: number_of_satellites
-          in: header
-          required: false
-          description: number of satellites used in the following VDE-SAT network simulations until changed. Shall not be specified if year is specified.
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 140
-          example: 4
-        - name: interference_conditions
-          in: header
-          required: false
-          description: gives the possibility to assume good or bad conditions for the transmissions.
-          schema:
-            type: string
-            enum: [bad, normal, good]
-            default: normal
+        - config
+      summary: VDE-SAT configuration
+      description: Change the start_time or the number_of_satellites to be used in the VDE-SAT network model. Only one of the parameters must be set.
+      requestBody:
+        content:
+          application/json:
+            schema:
+                oneOf:
+                - $ref: '#/components/schemas/Constellation_time'
+                - $ref: '#/components/schemas/Constellation_number_of_satellites'
       responses:
-        '200':
-          description: Successful response. Message accepted by the system.
-          content:
-            application/json:
-              schema:
-                type: string
-                
-        default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          
+        '201':
+          description: Created
+        '422':
+          description: Unprocessable Entity    
   /time_reference:
     put:
       tags:
@@ -87,6 +58,8 @@ paths:
   #---Ships---
   /ships:
     get:
+      tags:
+        - ship
       summary: get a list of ships
       description: 'Get the list of ships in the simulation.'
       responses:
@@ -102,7 +75,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  
     post:
       tags:
         - ship
@@ -128,7 +100,6 @@ paths:
               description: Link to the created ship.
         '422':
           description: Unprocessable Entity
-          
   /ships/{MMSI}:
     parameters:
       - in: path
@@ -139,12 +110,16 @@ paths:
         description: MMSI of the ship
     # delete
     delete:
+      tags:
+        - ship
       summary: Delete a ship from the simulation. It will not be possible to receive messages for that ship anymore. The VDE-SAT network will forget that this ship existed. Messages cannot be transferred to this ship anymore.
       responses:
         '204':
           description: Ship was deleted.    
     # get
     get:
+      tags:
+        - ship
       summary: Get a ship by MMSI
       operationId: getShip
       responses:
@@ -163,6 +138,8 @@ paths:
   #---coaststations---
   /coaststations:
     get:
+      tags:
+        - coaststation
       summary: get a list of coast stations
       description: 'Get the list of coast stations in the simulation.'
       responses:
@@ -172,7 +149,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListOfCoastStations'
-  
+    # post
     post:
       tags:
         - coaststation
@@ -198,7 +175,6 @@ paths:
               description: Link to the created coast station.
         '422':
           description: Unprocessable Entity
-          
   /coaststations/{MMSI}:
     parameters:
       - in: path
@@ -209,15 +185,18 @@ paths:
         description: MMSI of the coast station
     # delete
     delete:
+      tags:
+        - coaststation
       summary: Delete a coast station from the simulation. The VDE-SAT network will forget that this coast station existed. Messages cannot be transferred through this coast station anymore.
       responses:
         '204':
           description: Coast station was deleted.    
         '404':
           description: Not Found - no coastal station with this MMSI was found.
-
     # get
     get:
+      tags:
+        - coaststation
       summary: Get a coast station by MMSI
       operationId: getCoastStation
       responses:
@@ -229,8 +208,7 @@ paths:
                 $ref: '#/components/schemas/CoastStation'
         '404':
           description: Not Found - no coast station with this MMSI was found
-
-#===components===
+#===== Components =====
 components:
   securitySchemes:
     BasicAuth:
@@ -275,6 +253,33 @@ components:
       minimum: -180.0
       maximum: +180.0
       example: 10.33360 
+    #---conf---
+    Constellation_time:
+      type: object
+      properties:
+        start_time: 
+          description: Constellation calculated from Sternula's roadmap and the given time. Used in the following VDE-SAT network simulations until changed.
+          type: string
+          format: date-time
+        interference_conditions:
+          description: gives the possibility to assume good or bad conditions for the transmissions.
+          type: string
+          enum: [bad, normal, good]
+          default: normal       
+    Constellation_number_of_satellites:
+      type: object
+      properties:
+        number_of_satellites:      
+          description: Number of satellites used in the following VDE-SAT network simulations until changed. Shall not be specified if year is specified.
+          type: integer
+          minimum: 1
+          maximum: 140
+          example: 4
+        interference_conditions:
+          description: gives the possibility to assume good or bad conditions for the transmissions.
+          type: string
+          enum: [bad, normal, good]
+          default: normal       
     #---ship---  
     ListOfShips:
       type: array
@@ -296,7 +301,7 @@ components:
           $ref: '#/components/schemas/latitude'
         longitude:
           $ref: '#/components/schemas/longitude'
-          
+    #---coast stations--- 
     ListOfCoastStations:
       type: array
       items:
