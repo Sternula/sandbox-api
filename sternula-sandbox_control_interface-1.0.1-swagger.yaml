@@ -90,10 +90,10 @@ paths:
               schema:
                   $ref: '#/components/schemas/Mmsi'
           links:
-            GetShipByMmsi:
+            GetShipByMMSI:
               operationId: getShip
               parameters:
-                MMSI: '$response.body#/Mmsi'
+                MMSI: '$response.body#/MMSI'
               description: Link to the created ship.
         '422':
           description: Unprocessable Entity
@@ -101,10 +101,10 @@ paths:
     parameters:
       - in: path
         name: MMSI
-        schema:
-           $ref: '#/components/schemas/Mmsi'
         required: true
         description: MMSI of the ship
+        schema:
+           $ref: '#/components/schemas/Mmsi'
     # delete
     delete:
       tags:
@@ -140,7 +140,8 @@ paths:
       tags:
         - coaststation
       summary: get a list of coast stations
-      description: 'Get the list of coast stations in the simulation.'
+      description: Get the list of coast stations in the simulation.
+      operationId: getAllCoastStation
       responses:
         '200':
           description: Successful response.
@@ -167,10 +168,10 @@ paths:
               schema:
                   $ref: '#/components/schemas/Mmsi'
           links:
-            GetShipByMmsi:
-              operationId: getShip
+            GetCoastStationByMMSI:
+              operationId: getCoastStation
               parameters:
-                MMSI: '$response.body#/Mmsi'
+                MMSI: '$response.body#/MMSI'
               description: Link to the created coast station.
         '422':
           description: Unprocessable Entity
