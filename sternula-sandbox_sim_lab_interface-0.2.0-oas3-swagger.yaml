@@ -19,12 +19,13 @@ paths:
   /constellations:
     post:
       tags:
-        - config
-      summary: SimLab constellation configuration
-      description: >-
-        Add a VDE-SAT constellations on which simulations can be performed eg.
-        the roadmap.
+        - constellation
+      summary: Create a VDE-SAT constellation and return det simulation Id
+      operationId: createConstellation
       requestBody:
+        required: true      
+        description: A JSON object containing a VDE-SAT constellation on which simulations can be performed eg.
+          the roadmap.
         content:
           application/json:
             schema:
@@ -32,8 +33,133 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID of the created constellation
+          links:
+            GetConstellationByConstellationUUID:
+              operationId: getConstellation
+              parameters:
+                constellationId: '$response.body#/constellationId'
+              description: The `uuid` value returned in the response can be used as
+                the `constellationId` parameter in `GET /constellations/{constellationId}`.
         '422':
           description: Unprocessable Entity
+
+  /constellations/{constellationId}:
+    get:
+      tags: 
+        - constellation
+      summary: Returns a constellation by an id.
+      parameters:
+        - name: constellationId
+          in: path
+          required: true
+          description: The uuid of the constellation to return.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+      responses:
+        '200':
+          description: A constellation object.
+          content:
+            application/json:
+              schema:
+                 $ref: '#/components/schemas/Constellation'
+        '400':
+          description: The specified constellationId is invalid (not a uuid).
+        '404':
+          description: A constellation with the specified Id was not found.
+        default:
+          description: Unexpected error
+
+  /constellations/{constellationId}/simulations:
+    post:
+      tags:
+        - simulation
+      summary: Create and run a simulation
+      operationId: createSimulation
+      parameters:
+        - name: constellationId
+          in: path
+          description: constellation Id of the constellation on which the simulation is to be performed. 
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true      
+        description: A JSON object containing starttime and data packages for the concrete simulation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Simulation'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Id of the created simulation
+          links:
+            GetSimulationBySimulationUUID:
+              operationId: getSimulation
+              parameters:
+                constellationId: '$response.body#/simulationId'
+              description: The `uuid` value returned in the response can be used as
+                the `simulationId` parameter in `GET /constellations/{constellationId}/simulation/{simulationId}`.
+        '422':
+          description: Unprocessable Entity
+  /constellations/{constellationId}/simulation/{simulationId}:
+    get:
+      tags: 
+        - simulation
+      summary: Returns a simulaiton by the constellationId and simulationId.
+      parameters:
+        - name: constellationId
+          in: path
+          required: true
+          description: The uuid of the constellation to be used.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+        - name: simulationId
+          in: path
+          required: true
+          description: The uuid of the simulation to return.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+      responses:
+        '200':
+          description: A simulation object - containing all simulations objects.
+          content:
+            application/json:
+              schema:
+                 $ref: '#/components/schemas/Simulation'
+        '400':
+          description: The specified constellationId or SimulationId is invalid (not a uuid).
+        '404':
+          description: A simulation with the specified Id was not found.
+        default:
+          description: Unexpected error
           
 #----------------------
 # Components
@@ -44,10 +170,16 @@ components:
       type: http
       scheme: basic
   schemas:
+    #--Constellation--#
     Constellation:
       description: The satellite constellation used by the SimLab simulator
       type: object
       properties:
+        constellationId:
+          description: A universally unique identifier of the constellation [uuid]
+          type: string
+          format: uuid
+          readOnly: true
         startTime:
           description: start time for the constellation. - the first satellite in operation.
           type: string
@@ -55,19 +187,28 @@ components:
         satellites:
           description: The list of satellites in the constellation
           type: array
+          minimum: 1
           items:
             $ref: '#/components/schemas/satellite'
-        coastStations:
-          description: The list of coast stations in the constellation
-          type: array
-          items:
-            $ref: '#/components/schemas/CoastStation'
+            
         groundStations:
           description: The list of coast stations in the constellation
           type: array
           items:
             $ref: '#/components/schemas/GroundStation'
-        
+        devices:
+          description: The list of ships in the constellation
+          type: array
+          maximum: 1
+          items:
+            $ref: '#/components/schemas/Device'
+        coastStations:
+          description: The list of coast stations in the constellation
+          type: array
+          maximum: 1
+          items:
+            $ref: '#/components/schemas/CoastStation'
+     
     satellite:
       description: satellite
       type: object
@@ -231,7 +372,66 @@ components:
               type: number
               format: double
               default: 0.0
-          
+    GroundStation:      
+      type: object
+      required:
+        - id
+        - latitude
+        - longitude
+      properties:
+        id:
+          type: string
+        latitude:
+          $ref: '#/components/schemas/Latitude'
+        longitude:
+          $ref: '#/components/schemas/Longitude'
+    
+    Device:
+      type: object
+      required:
+        - MMSI
+        - latitude
+        - longitude
+      properties:
+        MMSI:
+          $ref: '#/components/schemas/Mmsi'
+        latitude:
+          $ref: '#/components/schemas/Latitude'
+        longitude:
+          $ref: '#/components/schemas/Longitude'
+
+    CoastStation:
+      type: object
+      required:
+        - MMSI
+        - coverage
+      properties:
+        MMSI:
+          $ref: '#/components/schemas/Mmsi'
+        coverage:
+          type: array
+          uniqueItems: true
+          items:
+            type: object
+            required:
+              - latitude
+              - longitude
+            properties:
+              latitude:
+                $ref: '#/components/schemas/Latitude'
+              longitude:
+                $ref: '#/components/schemas/Longitude'
+          minItems: 3
+          maxItems: 16
+          example:
+            - latitude: 56.822
+              longitude: 10.222
+            - latitude: 57.142
+              longitude: 10.222
+            - latitude: 57.142
+              longitude: 10.4042
+            - latitude: 56.822
+              longitude: 10.4042
     Mmsi:
       description: Maritime Mobile Service Identity
       type: string
@@ -240,14 +440,14 @@ components:
       format: mmsi
       pattern: '^\d{9}$'
       example: '220243167'
-    latitude:
+    Latitude:
       description: latitude in Decimal Degrees
       type: number
       format: degrees
       minimum: -90
       maximum: 90
       example: 56.9729
-    longitude:
+    Longitude:
       description: longitude in Decimal Degrees
       type: number
       format: degrees
@@ -303,52 +503,6 @@ components:
       maximum: 10000
       example: 10
       
-    Ship:
-      type: object
-      required:
-        - MMSI
-        - latitude
-        - longitude
-      properties:
-        MMSI:
-          $ref: '#/components/schemas/Mmsi'
-        latitude:
-          $ref: '#/components/schemas/latitude'
-        longitude:
-          $ref: '#/components/schemas/longitude'
-
-    CoastStation:
-      type: object
-      required:
-        - MMSI
-        - coverage
-      properties:
-        MMSI:
-          $ref: '#/components/schemas/Mmsi'
-        coverage:
-          type: array
-          uniqueItems: true
-          items:
-            type: object
-            required:
-              - lon
-              - lat
-            properties:
-              lon:
-                $ref: '#/components/schemas/longitude'
-              lat:
-                $ref: '#/components/schemas/latitude'
-          minItems: 3
-          maxItems: 16
-          example:
-            - lon: 10.222
-              lat: 56.822
-            - lon: 10.222
-              lat: 57.142
-            - lon: 10.4042
-              lat: 57.142
-            - lon: 10.4042
-              lat: 56.822
 security:
   - BasicAuth: []
 servers:
