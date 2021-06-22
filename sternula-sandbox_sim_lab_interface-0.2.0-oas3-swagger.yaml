@@ -123,11 +123,11 @@ paths:
                 the `simulationId` parameter in `GET /constellations/{constellationId}/simulation/{simulationId}`.
         '422':
           description: Unprocessable Entity
-  /constellations/{constellationId}/simulation/{simulationId}:
+  /constellations/{constellationId}/simulation/{simulationId}/devices:
     get:
       tags: 
         - simulation
-      summary: Returns a simulaiton by the constellationId and simulationId.
+      summary: Returns a simulation of devices by the constellationId and simulationId.
       parameters:
         - name: constellationId
           in: path
@@ -149,11 +149,14 @@ paths:
             maximum: 1
       responses:
         '200':
-          description: A simulation object - containing all simulations objects.
+          description: A simulation object - containing all simulations objects of devices.
           content:
             application/json:
               schema:
-                 $ref: '#/components/schemas/Simulation'
+                description: The list of ships in the constellation
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
