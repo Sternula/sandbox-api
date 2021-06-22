@@ -376,62 +376,54 @@ components:
       type: object
       required:
         - id
-        - latitude
-        - longitude
+        - pointGeo
       properties:
         id:
           type: string
-        latitude:
-          $ref: '#/components/schemas/Latitude'
-        longitude:
-          $ref: '#/components/schemas/Longitude'
+        pointGeo:
+          $ref: '#/components/schemas/PointGeo'
     
     Device:
       type: object
       required:
         - MMSI
-        - latitude
-        - longitude
+        - pointGeo
       properties:
         MMSI:
           $ref: '#/components/schemas/Mmsi'
-        latitude:
-          $ref: '#/components/schemas/Latitude'
-        longitude:
-          $ref: '#/components/schemas/Longitude'
+        pointGeo:
+          $ref: '#/components/schemas/PointGeo'
 
     CoastStation:
       type: object
       required:
         - MMSI
-        - coverage
+        - pointGeo
       properties:
         MMSI:
           $ref: '#/components/schemas/Mmsi'
-        coverage:
-          type: array
-          uniqueItems: true
-          items:
-            type: object
-            required:
-              - latitude
-              - longitude
-            properties:
-              latitude:
-                $ref: '#/components/schemas/Latitude'
-              longitude:
-                $ref: '#/components/schemas/Longitude'
-          minItems: 3
-          maxItems: 16
-          example:
-            - latitude: 56.822
-              longitude: 10.222
-            - latitude: 57.142
-              longitude: 10.222
-            - latitude: 57.142
-              longitude: 10.4042
-            - latitude: 56.822
-              longitude: 10.4042
+        pointGeo:
+          $ref: '#/components/schemas/PointGeo'
+      example:
+          MMSI: 002202467
+          latitude: 56.822
+          longitude: 10.222
+          altitude: 0.02
+              
+    PointGeo:
+      description: Point in Geo. Altitude is optional.
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          $ref: '#/components/schemas/Latitude'
+        longitude:
+          $ref: '#/components/schemas/Longitude'
+        altitude:
+          $ref: '#/components/schemas/Altitude'
+    
     Mmsi:
       description: Maritime Mobile Service Identity
       type: string
@@ -454,6 +446,12 @@ components:
       minimum: -180
       maximum: 180
       example: 10.3336
+    Altitude:
+      description: Altitude - height above sea level [km]
+      type: number
+      format: double
+      default: 0.0  #sea level
+      example: 550.50
     Constellation_time:
       type: object
       properties:
