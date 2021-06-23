@@ -163,6 +163,88 @@ paths:
           description: A simulation with the specified Id was not found.
         default:
           description: Unexpected error
+
+  /constellations/{constellationId}/simulation/{simulationId}/groundstations:
+    get:
+      tags: 
+        - simulation
+      summary: Returns a simulation of groundstations, specified by the constellationId and simulationId.
+      parameters:
+        - name: constellationId
+          in: path
+          required: true
+          description: The uuid of the constellation to be used.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+        - name: simulationId
+          in: path
+          required: true
+          description: The uuid of the simulation to return.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+      responses:
+        '200':
+          description: A simulation object - containing all simulations objects of ground stations.
+          content:
+            application/json:
+              schema:
+                description: The list of ground stations in the constellation
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroundStation'
+        '400':
+          description: The specified constellationId or SimulationId is invalid (not a uuid).
+        '404':
+          description: A simulation with the specified Id was not found.
+        default:
+          description: Unexpected error
+
+  /constellations/{constellationId}/simulation/{simulationId}/coaststations:
+    get:
+      tags: 
+        - simulation
+      summary: Returns a simulation of coaststations, specified by the constellationId and simulationId.
+      parameters:
+        - name: constellationId
+          in: path
+          required: true
+          description: The uuid of the constellation to be used.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+        - name: simulationId
+          in: path
+          required: true
+          description: The uuid of the simulation to return.
+          schema:
+            type: string
+            format: uuid
+            minimum: 1
+            maximum: 1
+      responses:
+        '200':
+          description: A simulation object - containing all simulations objects of coast stations.
+          content:
+            application/json:
+              schema:
+                description: The list of coast stations in the constellation
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoastStation'
+        '400':
+          description: The specified constellationId or SimulationId is invalid (not a uuid).
+        '404':
+          description: A simulation with the specified Id was not found.
+        default:
+          description: Unexpected error
           
 #----------------------
 # Components
@@ -193,7 +275,6 @@ components:
           minimum: 1
           items:
             $ref: '#/components/schemas/satellite'
-            
         groundStations:
           description: The list of coast stations in the constellation
           type: array
@@ -211,6 +292,9 @@ components:
           maximum: 1
           items:
             $ref: '#/components/schemas/CoastStation'
+        Network:
+          description: Characteristics of the VDE-SAT network. This is also where you can change the Interference.
+        ## TODO:
      
     satellite:
       description: satellite
@@ -375,7 +459,58 @@ components:
               type: number
               format: double
               default: 0.0
-    GroundStation:      
+              
+    Simulation:
+      description: Simulation to be performed
+      type: object
+      required:
+        - startTime
+        - sourceIds
+        - destinationIds
+        - messageSize
+      properties:
+        startTime:
+          description: start time for the simulation.
+          type: string
+          format: date-time
+        sourceIds:
+          type: array
+          uniqueItems: true
+          items:
+            oneOf:
+              #coaststation Id / ship Id
+            - $ref: '#/components/schemas/Mmsi'
+              #groundstation Id
+            - type: object  
+              properties:
+                id:
+                  type: string            
+        destinationIds:
+          type: array
+          uniqueItems: true
+          items:
+            oneOf:
+              #coaststation Id / ship Id
+            - $ref: '#/components/schemas/Mmsi'
+              #groundstation Id
+            - type: object  
+              properties:
+                id:
+                  type: string            
+        messageSize:
+          description: message size [bits]
+          type: integer
+          minimum: 1
+      example: 
+        description: Example of sending 1kB to one ship with MMSI 220243167 through Coast stations 002202467, 002202468 or Ground station 999882.
+        startTime: '2022-07-20T17:32:280'
+        sourceIds: [002202467, 002202468, '999882', '999880']
+        destinationId: [220243167]
+        messageSize: 
+          value: 8000
+    
+    GroundStation:
+      description: Gateway between VDE-SAT network and a terrestrial network
       type: object
       required:
         - id
@@ -385,6 +520,20 @@ components:
           type: string
         pointGeo:
           $ref: '#/components/schemas/PointGeo'
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        receivedData:
+          type: integer
+          minimum: 0
+      example:
+        id: 'GS-AAL'
+        pointGeo:
+          latitude: 56.021
+          longitude: 10.001
+        timestamp: 2022-07-20T17:32:280
+        receivedData: 96
     
     Device:
       type: object
@@ -408,10 +557,10 @@ components:
         pointGeo:
           $ref: '#/components/schemas/PointGeo'
       example:
-          MMSI: 002202467
-          latitude: 56.822
-          longitude: 10.222
-          altitude: 0.02
+        MMSI: 002202467
+        latitude: 56.822
+        longitude: 10.222
+        altitude: 0.02
               
     PointGeo:
       description: Point in Geo. Altitude is optional.
@@ -426,7 +575,7 @@ components:
           $ref: '#/components/schemas/Longitude'
         altitude:
           $ref: '#/components/schemas/Altitude'
-    
+    ##
     Mmsi:
       description: Maritime Mobile Service Identity
       type: string
@@ -435,6 +584,7 @@ components:
       format: mmsi
       pattern: '^\d{9}$'
       example: '220243167'
+      
     Latitude:
       description: latitude in Decimal Degrees
       type: number
@@ -442,6 +592,7 @@ components:
       minimum: -90
       maximum: 90
       example: 56.9729
+      
     Longitude:
       description: longitude in Decimal Degrees
       type: number
@@ -449,61 +600,14 @@ components:
       minimum: -180
       maximum: 180
       example: 10.3336
+      
     Altitude:
       description: Altitude - height above sea level [km]
       type: number
       format: double
       default: 0.0  #sea level
       example: 550.50
-    Constellation_time:
-      type: object
-      properties:
-        start_time:
-          description: >-
-            Constellation calculated from Sternula's roadmap and the given time.
-            Used in the following VDE-SAT network simulations until changed.
-          type: string
-          format: date-time
-        interference_conditions:
-          $ref: '#/components/schemas/Interference_conditions'
-        time_factor:
-          $ref: '#/components/schemas/Time_factor'
-    Constellation_number_of_satellites:
-      type: object
-      properties:
-        number_of_satellites:
-          description: >-
-            Number of satellites used in the following VDE-SAT network
-            simulations until changed. Shall not be specified if year is
-            specified.
-          type: integer
-          minimum: 1
-          maximum: 140
-          example: 4
-        interference_conditions:
-          $ref: '#/components/schemas/Interference_conditions'
-        time_factor:
-          $ref: '#/components/schemas/Time_factor'
-    Interference_conditions:
-      description: >-
-        gives the possibility to assume good or bad conditions for the
-        transmissions.
-      type: string
-      enum:
-        - bad
-        - normal
-        - good
-      default: normal
-    Time_factor:
-      description: >-
-        the factor applied to the time clock in the simulation. If e.g. set to
-        10, a 60 minute interval in the simulated network will only take 6
-        minutes in realtime. Default is a factor of 1.
-      type: integer
-      minimum: 1
-      maximum: 10000
-      example: 10
-      
+ 
 security:
   - BasicAuth: []
 servers:
