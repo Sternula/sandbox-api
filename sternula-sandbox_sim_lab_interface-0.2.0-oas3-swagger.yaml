@@ -3,11 +3,7 @@ info:
   title: Sternula Sandbox SimLab Interface
   version: 0.2.0-oas3
   description: >-
-    Internal interface between Sternula VDES/MMS Sandbox and SimLab simulation
-    tool. Copyright Sternula Aps, Denmark, 2019, 2020, 2021 May be used to work
-    with the <a
-    href="https://www.sternula.com/index.php/product-vdes-testplatform/">Sternula
-    Sandbox Product</a>.
+    Internal interface between Sternula VDES/MMS Sandbox and SimLab simulation tool. Copyright Sternula Aps, Denmark, 2019, 2020, 2021 May be used to work with the <a href="https://www.sternula.com/index.php/product-vdes-testplatform/">Sternula Sandbox Product</a>.
   termsOfService: 'https://www.sternula.com/index.php/general-terms-and-conditions/'
   contact:
     name: Sternula
@@ -61,12 +57,13 @@ paths:
         - name: constellationId
           in: path
           required: true
-          description: The uuid of the constellation to return.
+          description: The uuid of the constellation.
           schema:
             type: string
             format: uuid
             minimum: 1
             maximum: 1
+          example: '3fa85f64-5717-4562-b3fc-2c963f66afa6'
       responses:
         '200':
           description: A constellation object.
@@ -95,6 +92,9 @@ paths:
           schema:
             type: string
             format: uuid
+            minimum: 1
+            maximum: 1
+          example: '3fa85f64-5717-4562-b3fc-2c963f66afa6'
       requestBody:
         required: true      
         description: A JSON object containing starttime and data packages for the concrete simulation.
@@ -110,10 +110,11 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
+                  simulationId:
                     type: string
                     format: uuid
                     description: Id of the created simulation
+                    example: '3da864c6-f2e8-455e-b0e8-99495a8ffb8a'
           links:
             GetSimulationBySimulationUUID:
               operationId: getSimulation
@@ -138,6 +139,7 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3fa85f64-5717-4562-b3fc-2c963f66afa6'
         - name: simulationId
           in: path
           required: true
@@ -147,6 +149,7 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3da864c6-f2e8-455e-b0e8-99495a8ffb8a'
       responses:
         '200':
           description: A simulation object - containing all simulations objects of devices.
@@ -179,6 +182,7 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3fa85f64-5717-4562-b3fc-2c963f66afa6'
         - name: simulationId
           in: path
           required: true
@@ -188,6 +192,7 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3da864c6-f2e8-455e-b0e8-99495a8ffb8a'
       responses:
         '200':
           description: A simulation object - containing all simulations objects of ground stations.
@@ -198,6 +203,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/GroundStation'
+                example:
+                  id: 'ST-AAL'
+                  pointGeo:
+                    latitiude: 57.013
+                    longitude: 9.9888
+                  timestamp: '2022-07-20T17:32:320'
+                  receivedData: 96000
+
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
@@ -220,6 +233,8 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3fa85f64-5717-4562-b3fc-2c963f66afa6'
+            
         - name: simulationId
           in: path
           required: true
@@ -229,6 +244,7 @@ paths:
             format: uuid
             minimum: 1
             maximum: 1
+            example: '3da864c6-f2e8-455e-b0e8-99495a8ffb8a'
       responses:
         '200':
           description: A simulation object - containing all simulations objects of coast stations.
@@ -239,6 +255,13 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/CoastStation'
+                example:
+                  id: '002204477'
+                  pointGeo:
+                    latitude: 56.97534
+                    longitude: 10.33412
+                  timestamp: '2022-07-20T17:32:280'
+                  receivedData: 96000
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
@@ -301,11 +324,15 @@ components:
       type: object
       properties:
         id:
+          description: The unique id of the satellite, default Sat'N', where n is a consecutive number.
           type: string
+          uniqueItems: true
+          example: 'Sat14'
         operationDate:
           description: The date from which the satellite is operational.
           type: string
           format: date-time
+          example: '2026-12-24T12:11:04.564Z'
           
         orbit:
           $ref: '#/components/schemas/orbit'
@@ -366,6 +393,14 @@ components:
           description: Epoch
           type: string
           format: date-time
+      example: 
+        e: 0.0
+        i: 88.0
+        ra: 160.0
+        ap: 0.0
+        ma: 270
+        mm: 14.9
+        epoch: '2020-01-01T17:16:13:001'
     radio:
       description: Radio module and antenna. Received power calculation Preceived [dBm] =
         Ptransmitted [dBm] + Lossdistance [dB] + Lossmisc [dB]
@@ -498,16 +533,16 @@ components:
                 id:
                   type: string            
         messageSize:
-          description: message size [bits]
+          description: message size [bytes]
           type: integer
+          format: int64
           minimum: 1
       example: 
         description: Example of sending 1kB to one ship with MMSI 220243167 through Coast stations 002202467, 002202468 or Ground station 999882.
         startTime: '2022-07-20T17:32:280'
         sourceIds: [002202467, 002202468, '999882', '999880']
         destinationId: [220243167]
-        messageSize: 
-          value: 8000
+        messageSize: 10000
     
     GroundStation:
       description: Gateway between VDE-SAT network and a terrestrial network
@@ -526,15 +561,15 @@ components:
           readOnly: true
         receivedData:
           type: integer
+          format: int64
           minimum: 0
+          readOnly: true
       example:
-        id: 'GS-AAL'
+        id: 'ST-AAL'
         pointGeo:
-          latitude: 56.021
-          longitude: 10.001
-        timestamp: 2022-07-20T17:32:280
-        receivedData: 96
-    
+          latitude: 57.0123
+          longitude: 9.9888
+
     Device:
       type: object
       required:
@@ -545,6 +580,23 @@ components:
           $ref: '#/components/schemas/Mmsi'
         pointGeo:
           $ref: '#/components/schemas/PointGeo'
+        radios:
+          type: array
+          items:
+            $ref: '#/components/schemas/radio'
+
+      example:
+        MMSI: '220191920'
+        pointGeo:
+          latitude: 60.011
+          longitude: 11.111
+        radios:
+          id: 'radio 1'
+          txPowerDBW: -12
+          txFrequency: 157.250
+          rxMiscLossDB: -3
+          antenna:
+            type: 'omni'
 
     CoastStation:
       type: object
@@ -557,9 +609,9 @@ components:
         pointGeo:
           $ref: '#/components/schemas/PointGeo'
       example:
-        MMSI: 002202467
-        latitude: 56.822
-        longitude: 10.222
+        MMSI: '002202467'
+        latitude: 56.97534
+        longitude: 10.33412
         altitude: 0.02
               
     PointGeo:
