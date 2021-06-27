@@ -160,6 +160,33 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Device'
+                example:
+                  - timestamp: '2022-07-20T17:32:10.280'
+                    MMSI: '220191920'
+                    pointGeo:
+                      latitude: 60.011
+                      longitude: 11.111
+                    rxData: 0
+                  - timestamp: '2022-07-20T17:32:10.280'
+                    MMSI: '220145544'
+                    pointGeo:
+                      latitude: -16.77
+                      longitude: 145.989
+                    rxData: 96000
+                  - timestamp: '2022-07-20T17:32:30.280'
+                    MMSI: '220191920'
+                    pointGeo:
+                      latitude: 60.011
+                      longitude: 11.111
+                    rxData: 0
+                  - timestamp: '2022-07-20T17:32:30.280'
+                    MMSI: '220145544'
+                    pointGeo:
+                      latitude: -16.77
+                      longitude: 145.989
+                    rxData: 5600
+        '202':
+          description: Accepted. But the simulation has not been completed yet.
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
@@ -210,7 +237,8 @@ paths:
                     longitude: 9.9888
                   timestamp: '2022-07-20T17:32:320'
                   receivedData: 96000
-
+        '202':
+          description: Accepted. But the simulation has not been completed yet.
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
@@ -262,6 +290,8 @@ paths:
                     longitude: 10.33412
                   timestamp: '2022-07-20T17:32:280'
                   receivedData: 96000
+        '202':
+          description: Accepted. But the simulation has not been completed yet.
         '400':
           description: The specified constellationId or SimulationId is invalid (not a uuid).
         '404':
@@ -316,8 +346,7 @@ components:
           items:
             $ref: '#/components/schemas/CoastStation'
         Network:
-          description: Characteristics of the VDE-SAT network. This is also where you can change the Interference.
-        ## TODO:
+          $ref: '#/components/schemas/Network'
      
     satellite:
       description: satellite
@@ -582,9 +611,14 @@ components:
           $ref: '#/components/schemas/PointGeo'
         radios:
           type: array
+          writeOnly: true
           items:
             $ref: '#/components/schemas/radio'
-
+        rxData:
+          description: received data since last reading [Bytes]
+          type: integer
+          format: int64
+          readOnly: true
       example:
         MMSI: '220191920'
         pointGeo:
@@ -627,6 +661,60 @@ components:
           $ref: '#/components/schemas/Longitude'
         altitude:
           $ref: '#/components/schemas/Altitude'
+          
+    Network:
+      description: Characteristics of the VDE-SAT network. This is also where you can change the Interference.
+      type: object
+      properties:
+        name:
+          type: string
+          enum:
+            - VDES
+        sessionUL:
+          $ref: '#/components/schemas/SessionAlloc'
+        sessionDL:
+          $ref: '#/components/schemas/SessionAlloc'
+
+    SessionAlloc:
+      type: object
+      properties:
+        capacityKbps:
+          description: The total max user data capacity of the eNodeB without coding and repetition
+          type: number
+          minimum: 0
+          example: 150
+        resourceAlloc:
+          description: An array of specifications of the data rates given to UEs given different radio conditions.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ResourceAlloc'
+        
+    ResourceAlloc:
+      type: object
+      required:
+        - rxThresholdDBm
+        - allocationKbps
+        - codingFactor
+      properties:
+        rxThresholdDBm:
+          description: If the received signal is better than this threshold, and if no other specification with a higher threshold exists, where the received signal is better than the threshold, then the UE is allocated resources according to the next two parameters. [dBm]
+          type: number
+          format: double
+          example: -135
+        allocationKbps:
+          description:  The occupied resources before coding and repetition. [Kbps]
+          type: number
+          format: double
+          minimum: 0
+          example: 50
+        codingFactor:
+          description: The level of redundancy (coding and repitions) as a factor. E.g. if there is no coding and the transmission is repeated once, the codingFactor is 2.
+          type: number
+          format: double
+          minimum: 0
+          example: 55
+      
     ##
     Mmsi:
       description: Maritime Mobile Service Identity
