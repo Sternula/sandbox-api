@@ -30,6 +30,24 @@ paths:
           description: Created
         '422':
           description: Unprocessable Entity
+  /constellations:
+    post:
+      tags:
+        - constellation
+      summary: Add the VDE-SAT constellation
+      requestBody:
+        required: true      
+        description: A JSON object containing a VDE-SAT constellation on which simulations can be performed eg.
+          the roadmap. Please note that only ONE constellation is allowed at the moment!
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Constellation'
+      responses:
+        '200':
+          description: added VDE-SAT constellation
+        '422':
+          description: Unprocessable Entity
   /start:
     post:
       tags: 
@@ -231,6 +249,230 @@ components:
           type: string
       required:
         - errorCause
+        
+    #--Constellation--#
+    Constellation:
+      description: The satellite constellation used by the SimLab simulator
+      type: object
+      properties:
+        constellationId:
+          description: A universally unique identifier of the constellation [uuid]
+          type: string
+          format: uuid
+          readOnly: true
+        startTime:
+          description: start time for the constellation. - the first satellite in operation.
+          type: string
+          format: date-time
+        satellites:
+          description: The list of satellites in the constellation
+          type: array
+          minimum: 1
+          items:
+            $ref: '#/components/schemas/satellite'
+        groundStations:
+          description: The list of coast stations in the constellation
+          type: array
+          items:
+            $ref: '#/components/schemas/GroundStation'
+        Network:
+          $ref: '#/components/schemas/Network'
+    satellite:
+      description: satellite
+      type: object
+      properties:
+        id:
+          description: The unique id of the satellite, default Sat'N', where n is a consecutive number.
+          type: string
+          uniqueItems: true
+          example: 'Sat14'
+        operationDate:
+          description: The date from which the satellite is operational.
+          type: string
+          format: date-time
+          example: '2026-12-24T12:11:04.564Z'
+          
+        orbit:
+          $ref: '#/components/schemas/orbit'
+        radios:
+          type: array
+          items:
+            $ref: '#/components/schemas/radio'
+    orbit:
+      description: Orbit defined by the six Keplerian elements plus epoch.
+      type: object
+      required:
+        - e
+        - i
+        - ra
+        - ap
+        - ma
+        - mm
+        - epoch
+      properties:
+        e:
+          description: 'Orbital eccentricity [e] (0 = circle)'
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        i:
+          description: 'Orbital Inclination [i]'
+          type: number
+          format: double
+          minimum: 0
+          maximum: 180
+        ra:
+          description: Longitude of the ascending node (Right Ascension of Ascending Node)
+            [Ω]
+          type: number
+          format: double
+          minimum: 0
+          maximum: 360
+        ap:
+          description: 'Argument of Perigee [ω]'
+          type: number
+          format: double
+          minimum: 0
+          maximum: 360
+        ma:
+          description: 'Mean anomaly [M]'
+          type: number
+          format: double
+          minimum: 0
+          maximum: 360
+        mm:
+          description: 'Mean motion [rev/day].'
+          type: number
+          format: double
+          minimum: 10
+          maximum: 17
+        epoch:
+          description: Epoch
+          type: string
+          format: date-time
+      example: 
+        e: 0.0
+        i: 88.0
+        ra: 160.0
+        ap: 0.0
+        ma: 270
+        mm: 14.9
+        epoch: '2020-01-01T17:16:13:001'
+    radio:
+      description: Radio module and antenna. Received power calculation Preceived [dBm] =
+        Ptransmitted [dBm] + Lossdistance [dB] + Lossmisc [dB]
+      type: object
+      properties:
+        id:
+          description: Unique id
+          type: string
+          example: radio 1
+        txPowerDBW:
+          description: 'Transmit power [dBW]'
+          type: number
+          format: double
+          example: -10
+        txFrequency:
+          description: 'Transmit radio frequency [MHz]'
+          type: number
+          format: double
+          minimum: 0
+          example: 100
+        rxIfDBm:
+          description: 'The receiver noise+interference (N0+I0) [dB]'
+          type: number
+          format: double
+          example: -115
+        rxMiscLossDB:
+          description: Various loss (polarization, etc.) used in the received power
+            calculation.
+          type: number
+          format: double
+          example: 0
+        antenna:
+          oneOf:
+            - $ref: '#/components/schemas/DirectionalAntenna'
+            - $ref: '#/components/schemas/OmniAntenna'
+            - $ref: '#/components/schemas/IsotropicAntenna'
+
+    BasicAntenna:
+      description: Basic parameter for an antenna.
+      type: object
+      properties:
+        leftTilt:
+          description: The tilt of the antenna in left direction from straight down (nadir).
+          type: number
+          format: degrees
+          minimum: -180
+          maximum: 180
+          default: 0
+          example: 0
+        upTilt: 
+          description: The tilt of the antenna in forward direction from straight down (nadir). The leftTilt is first applied and then the upTilt (like longitude used before latitude).  
+          type: number
+          format: degrees
+          minimum: -180
+          maximum: 180
+          default: 0
+          example: 67
+          
+    DirectionalAntenna:
+      description: The directional antenna is modelled by an ellipsoid 3D shape where the distance, d, from an internal point of the ellipsoid to the surface, raised to the power of 3, d3, represents the relative gain in that direction.
+      allOf: 
+        - $ref: '#/components/schemas/BasicAntenna'
+        - type: object
+          properties:
+            type:
+              description: Antenna type eg. xyagi
+              type: string
+              enum: [directional, xyagi]
+              example: directional
+            spotCenterGainDB:
+              description: 'The directional spot gain in [dBi]. 0.0 is a isotropic antenna.'
+              type: number
+              format: double
+              default: 0.0
+              example: 8
+            spotWidthToHeightFactor:
+              description: This allows the spot to be stretched. E.g. a value of 2 means that the width of the spot is twice the height. So, the gain in a direction 10 degrees left of the main direction will be the exact same as the gain in a direction pointing 5 degrees up. Specifying this will automatically produce the ellipsoid shape together with the spotCenterGainDB parameter.
+              type: number
+              format: double
+              default: 1
+
+    OmniAntenna:
+      description: The dipole antenna (omni) is most often used for the devices on ground. It is modelled by an ellipsoid 3D shape where the distance, d, from the center of the ellipsoid to the surface, raised to the power of 3.
+      allOf: 
+        - $ref: '#/components/schemas/BasicAntenna'
+        - type: object
+          properties:
+            type:
+              description: Antenna type
+              type: string
+              enum: [dipole]
+              example: dipole
+            horizontalGainDB:
+              description: 'The gain in dBi in horizontal direction. Specifying this will automatically determine the ellipsoid shape such that it has the specified gain in the horizontal direction while maintaining a total gain in all directions similar to an isotropic antenna.'
+              type: number
+              format: double
+              default: 0.0
+              
+    IsotropicAntenna:
+      description: The isotropic antenna is a teoretical antenna. It is modelled by 0 dBi in any directions.
+      allOf: 
+        - $ref: '#/components/schemas/BasicAntenna'
+        - type: object
+          properties:
+            type:
+              description: Antenna type
+              type: string
+              enum: [isotropic]
+              example: isotropic
+            gainDB:
+              description: 'The gain in 0 dBi'
+              type: number
+              format: double
+              default: 0.0        
     Mmsi:
       description: Maritime Mobile Service Identity
       type: string
@@ -239,20 +481,6 @@ components:
       format: mmsi
       pattern: '^\d{9}$'
       example: '220243167'
-    latitude:
-      description: latitude in Decimal Degrees
-      type: number
-      format: degrees
-      minimum: -90.0
-      maximum: +90.0
-      example: 56.9729       
-    longitude:
-      description: longitude in Decimal Degrees
-      type: number
-      format: degrees
-      minimum: -180.0
-      maximum: +180.0
-      example: 10.33360 
     #---conf---
     Constellation_time:
       type: object
@@ -307,9 +535,9 @@ components:
         MMSI:
           $ref: '#/components/schemas/Mmsi'
         latitude:
-          $ref: '#/components/schemas/latitude'
+          $ref: '#/components/schemas/Latitude'
         longitude:
-          $ref: '#/components/schemas/longitude'
+          $ref: '#/components/schemas/Longitude'
     #---coast stations--- 
     ListOfCoastStations:
       type: array
@@ -336,9 +564,9 @@ components:
               - lat            
             properties:
               lon: 
-                $ref: '#/components/schemas/longitude'
+                $ref: '#/components/schemas/Longitude'
               lat: 
-                $ref: '#/components/schemas/latitude'
+                $ref: '#/components/schemas/Latitude'
           minItems: 3
           maxItems: 16
           example: 
@@ -350,6 +578,116 @@ components:
               lat: 57.142
             - lon: 10.4042
               lat: 56.822
+    GroundStation:
+      description: Gateway between VDE-SAT network and a terrestrial network
+      type: object
+      required:
+        - id
+        - pointGeo
+      properties:
+        id:
+          type: string
+        pointGeo:
+          $ref: '#/components/schemas/PointGeo'
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        receivedData:
+          type: integer
+          format: int64
+          minimum: 0
+          readOnly: true
+      example:
+        id: 'ST-AAL'
+        pointGeo:
+          latitude: 57.0123
+          longitude: 9.9888
+
+    Network:
+      description: Characteristics of the VDE-SAT network. This is also where you can change the Interference.
+      type: object
+      properties:
+        name:
+          type: string
+          enum:
+            - VDES
+        sessionUL:
+          $ref: '#/components/schemas/SessionAlloc'
+        sessionDL:
+          $ref: '#/components/schemas/SessionAlloc'
+
+    SessionAlloc:
+      type: object
+      properties:
+        resourceAlloc:
+          description: An array of specifications of the data rates given to UEs given different radio conditions.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ResourceAlloc'
+        
+    ResourceAlloc:
+      type: object
+      required:
+        - rxThresholdDBm
+        - allocationKbps
+        - codingFactor
+      properties:
+        rxThresholdDBm:
+          description: If the received signal is better than this threshold, and if no other specification with a higher threshold exists, where the received signal is better than the threshold, then the UE is allocated resources according to the next two parameters. [dBm]
+          type: number
+          format: double
+          example: -135
+        allocationKbps:
+          description:  The occupied resources before coding and repetition. [Kbps]
+          type: number
+          format: double
+          minimum: 0
+          example: 50
+        codingFactor:
+          description: The level of redundancy (coding and repitions) as a factor. E.g. if there is no coding and the transmission is repeated once, the codingFactor is 2.
+          type: number
+          format: double
+          minimum: 0
+          example: 55
+    PointGeo:
+      description: Point in Geo. Altitude is optional.
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          $ref: '#/components/schemas/Latitude'
+        longitude:
+          $ref: '#/components/schemas/Longitude'
+        altitude:
+          $ref: '#/components/schemas/Altitude'
+          
+    Latitude:
+      description: latitude in Decimal Degrees
+      type: number
+      format: degrees
+      minimum: -90
+      maximum: 90
+      example: 56.9729
+      
+    Longitude:
+      description: longitude in Decimal Degrees
+      type: number
+      format: degrees
+      minimum: -180
+      maximum: 180
+      example: 10.3336
+      
+    Altitude:
+      description: Altitude - height above sea level [meter]
+      type: number
+      format: double
+      default: 0.0  #sea level
+      example: 20.50
+
   #---responses---
   responses:
     NotFound:
